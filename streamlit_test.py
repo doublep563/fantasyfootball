@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import requests
+import pprint
+import numpy as np
 from enum import Enum
 from src import agstyler
 from src.agstyler import PRECISION_ONE
@@ -140,9 +142,8 @@ players = build_players(bootStrap)
 df = events.merge(fixtures, left_on='fixtureId', right_on='id')
 
 df = df.merge(players, left_on='id_x', right_on='player_id')
-
 # =============================================================================
-# st.write(list(df.columns.values))
+# st.write(list(df.columns))
 # st.write(df.head())
 #
 # st.write(len(events.index))
@@ -167,33 +168,49 @@ player_types = st.sidebar.radio(
 min = (players['now_cost'].min())
 max = (players['now_cost'].max())
 
-values = st.sidebar.slider(
+if "slider_range" not in st.session_state:
+    st.session_state["slider_range"] = (min, max)
+
+
+player_cost_range = st.sidebar.slider(
     'Player Cost',
-    min, max, (min, max), step=(0.1), format="%f")
+    min, max,  step=(0.1), format="%f", key="slider_range")
+
 
 team_name = players['team_name'].drop_duplicates()
 team_choice = st.sidebar.selectbox('Team', team_name, index=None,
                                    placeholder="Select Team...",)
 
-if player_types == 'ALL':
-    if team_choice:
-        display = players.loc[(players['team_name'] == team_choice) & (
-            values[0] <= players['now_cost']) & (players['now_cost'] <= values[1])]
+player_select = st.sidebar.selectbox(
+    "Search for Player",
+    players['web_name'].tolist(),
+    index=None,
+    placeholder="Enter player name"
+)
 
-    else:
-        st.write(values)
-        display = players.loc[(
-            values[0] <= players['now_cost']) & (players['now_cost'] <= values[1])]
+if player_select:
+    display = players.loc[players['web_name'].str.contains(player_select)]
+
 else:
-    st.write(player_types)
-    if team_choice:
-        display = players.loc[(players['team_name'] == team_choice)
-                              & (players['singular_name_short'] == player_types) & (
-                                  values[0] <= players['now_cost']) & (players['now_cost'] <= values[1])]
+    if player_types == 'ALL':
+        if team_choice:
+            display = players.loc[(players['team_name'] == team_choice) & (
+                player_cost_range[0] <= players['now_cost']) & (players['now_cost'] <= player_cost_range[1])]
+
+        else:
+            st.write(player_cost_range)
+            display = players.loc[(
+                player_cost_range[0] <= players['now_cost']) & (players['now_cost'] <= player_cost_range[1])]
     else:
-        display = players.loc[(
-            players['singular_name_short'] == player_types) & (
-                values[0] <= players['now_cost']) & (players['now_cost'] <= values[1])]
+        st.write(player_types)
+        if team_choice:
+            display = players.loc[(players['team_name'] == team_choice)
+                                  & (players['singular_name_short'] == player_types) & (
+                                      player_cost_range[0] <= players['now_cost']) & (players['now_cost'] <= player_cost_range[1])]
+        else:
+            display = players.loc[(
+                players['singular_name_short'] == player_types) & (
+                    player_cost_range[0] <= players['now_cost']) & (players['now_cost'] <= player_cost_range[1])]
 
 
 with st.sidebar:
@@ -239,3 +256,15 @@ with st.sidebar:
 selected_row = grid["selected_rows"]
 if selected_row:
     st.write(selected_row[0]['web_name'])
+    st.write(selected_row[0]['player_id'])
+    player = df.loc[df['player_id'] == selected_row[0]['player_id']]
+    st.dataframe(player)
+
+    chart_data = pd.DataFrame(np.random.randn(
+        20, 3), columns=["col1", "col2", "col3"])
+    test_data = player[['kickoff_time', 'expected_goals', 'expected_assists']]
+
+    st.line_chart(
+        # Optional
+        test_data, x="kickoff_time", y=["expected_goals", "expected_assists"], color=["#FF0000", "#0000FF"]
+    )
