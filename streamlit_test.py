@@ -1,11 +1,13 @@
 import streamlit as st
-import pandas as pd
-import requests
-import pprint
-import numpy as np
+import altair as alt
 from enum import Enum
 from src import agstyler
 from src.agstyler import PRECISION_ONE
+from load_data import load_bootStrap
+from load_data import build_players
+from load_data import load_event_live
+from load_data import load_fixtures
+from load_data import BASE_URL
 
 
 class Color(Enum):
@@ -17,121 +19,11 @@ class Color(Enum):
     GREEN_DARK = "#008631"
 
 
-@st.cache_data
-def load_bootStrap(base_url):
-    data_load_state = st.text('Loading bootstrap data...')
-
-    bootStrap = requests.get(base_url + 'bootstrap-static').json()
-
-    data_load_state.text('Loading bootstrap data...done!')
-
-    return bootStrap
-
-
-def build_players(bootstrap):
-    # create players dataframe
-    players = pd.json_normalize(bootStrap['elements'])
-
-    # create teams dataframe
-    teams = pd.json_normalize(bootStrap['teams'])
-
-    positions = pd.json_normalize(bootStrap['element_types'])
-
-    # join players to teams
-    df = pd.merge(
-        left=players,
-        right=teams,
-        left_on='team',
-        right_on='id'
-    )
-
-    # join player positions
-    df = df.merge(
-        positions,
-        left_on='element_type',
-        right_on='id'
-    )
-
-    # rename columns
-    df = df.rename(
-        columns={'name': 'team_name', 'singular_name': 'position_name', 'minutes_x': 'minutes',
-                 'short_name': 'Team', 'id': 'element_type',
-                 'id_x': 'player_id'}
-    )
-
-    df = df.drop(columns=['minutes', 'goals_scored', 'assists', 'clean_sheets',
-                          'goals_conceded', 'own_goals', 'penalties_saved', 'penalties_missed',
-                          'yellow_cards', 'red_cards', 'saves', 'bonus', 'bps', 'influence', 'creativity',
-                          'threat', 'ict_index', 'expected_goals', 'expected_assists', 'expected_goal_involvements',
-                          'expected_goals_conceded', 'starts', 'in_dreamteam', 'pulse_id'
-                          ])
-    # Maybe trouble. Why are there duplicates???
-    df = df.loc[:, ~df.columns.duplicated()].copy()
-    df['now_cost'] = df['now_cost'] / 10
-
-    # Drop players who are not available
-    df = df[~df['status'].isin(['u'])]
-
-    return df
-
-
-@st.cache_data
-def load_event_live(base_url, currentEvent):
-
-    data_load_state = st.text('Loading event live data...')
-
-    i = 1
-    allStats = []
-
-    while i <= currentEvent:
-        print(i)
-        event = requests.get(base_url + 'event/' + str(i) + '/live/').json()
-        for element in event['elements']:
-            fixtureId = 0
-            id = element['id']
-            if len(element['explain']):
-                fixtureId = (element['explain'][0]['fixture'])
-            else:
-                fixtureId = 999
-            stats = element['stats']
-            stats['id'] = id
-            stats['fixtureId'] = fixtureId
-            allStats.append(stats)
-        i += 1
-
-    data_load_state.text('Loading event live data...done!')
-
-    return pd.DataFrame(allStats)
-
-
-@st.cache_data
-def load_fixtures(BASE_URL):
-    fixtures = requests.get(BASE_URL + 'fixtures').json()
-
-    fixturesDF = pd.DataFrame(fixtures)
-    fixturesDF = fixturesDF.drop(columns=['stats'])
-
-    return fixturesDF
-
-
-def check_status(row):
-    highlight = 'background-color: tomato;'
-    injured = 'background-color: gold;'
-    default = ''
-
-    # must return one string per cell in this row
-    if row['status'] in ['s', 'i']:
-        return [highlight]*9
-    elif row['status'] in ['d']:
-        return [injured]*9
-    else:
-        return [default]*9
-
+st.set_page_config(layout="wide")
 
 st.title('Fantasy Football Python Stuff')
 
 # base url for all FPL API endpoints
-BASE_URL = 'https://fantasy.premierleague.com/api/'
 
 bootStrap = load_bootStrap(BASE_URL)
 events = load_event_live(BASE_URL, 8)
@@ -145,7 +37,6 @@ df = df.merge(players, left_on='id_x', right_on='player_id')
 # =============================================================================
 # st.write(list(df.columns))
 # st.write(df.head())
-#
 # st.write(len(events.index))
 # st.write(len(fixtures.index))
 # st.write(len(df.index))
@@ -253,18 +144,84 @@ with st.sidebar:
         fit_columns=True
     )
 
+# =============================================================================
+# outliers = df[['web_name', 'singular_name_short',
+#                'goals_scored', 'assists', 'expected_goal_involvements']]
+#
+# test = outliers.groupby(['web_name', 'singular_name_short']).sum()
+# test['xGI Differential'] = test['goals_scored'] + \
+#     test['assists'] - test['expected_goal_involvements']
+#
+# test = test.sort_values(
+#     by=['singular_name_short', 'xGI Differential'])
+#
+# st.dataframe(test)
+# =============================================================================
+
 selected_row = grid["selected_rows"]
 if selected_row:
-    st.write(selected_row[0]['web_name'])
-    st.write(selected_row[0]['player_id'])
+    title = selected_row[0]['first_name'] + \
+        ' ' + selected_row[0]['second_name']
+    st.title(title)
+    st.header(selected_row[0]['team_name'])
+
+    photo = selected_row[0]['photo'].split(".")
+
+    photoUrl = 'https://resources.premierleague.com/premierleague/photos/players/110x140/p' + \
+        photo[0] + '.png'
+
+# =============================================================================
+#     "https://resources.premierleague.com/premierleague/photos/players/110x140/p${this.code}.png"
+#
+# =============================================================================
+    st.image(photoUrl)
+
     player = df.loc[df['player_id'] == selected_row[0]['player_id']]
-    st.dataframe(player)
+    player.sort_values(by=['event'], ascending=False, inplace=True)
 
-    chart_data = pd.DataFrame(np.random.randn(
-        20, 3), columns=["col1", "col2", "col3"])
-    test_data = player[['kickoff_time', 'expected_goals', 'expected_assists']]
+    st.write(player.head())
 
-    st.line_chart(
-        # Optional
-        test_data, x="kickoff_time", y=["expected_goals", "expected_assists"], color=["#FF0000", "#0000FF"]
+    chart = alt.Chart(player).mark_point().encode(
+        x='event', y='expected_goal_involvements')
+
+    st.altair_chart(chart, use_container_width=True)
+
+    player.loc['total'] = player.sum()
+
+    player.loc[player.index[-1], ['event', 'fixtureId', 'now_cost']] = ''
+
+    custom_css = {
+        ".ag-header-cell-label": {"justify-content": "center"},
+        ".ag-header-group-cell-label": {"justify-content": "center"}
+    }
+
+    player_formatter = {
+        'event': ('GW', {'headerTooltip': 'Game Week', 'width': 60}),
+        'fixtureId': ('FX', {'headerTooltip': 'Fixture ID', 'width': 60}),
+        'now_cost': ('£', {'headerTooltip': 'Cost', 'width': 60}),
+        'total_points_x': ('Pts', {'headerTooltip': 'Points', 'width': 60}),
+        'starts': ('ST', {'width': 60}),
+        'minutes_x': ('MP', {'width': 60}),
+        'goals_scored': ('GS', {'width': 60}),
+        'assists': ('A', {'width': 60}),
+        'expected_goals': ('xG', {'width': 60}),
+        'expected_assists': ('xA', {**PRECISION_ONE, 'width': 60}),
+        'expected_goal_involvements': ('xGI', {'width': 60}),
+        'expected_goals_conceded': ('xGC', {'width': 60}),
+        'clean_sheets': ('CS', {'width': 60}),
+        'goals_conceded': ('GC', {'width': 60}),
+        'own_goals': ('OG', {'width': 60}),
+        'penalties_saved': ('PS', {'width': 60}),
+        'penalties_missed': ('PM', {'width': 60}),
+        'yellow_cards': ('YC', {'width': 60}),
+        'red_cards': ('RC', {'width': 60}),
+        'saves': ('S', {'width': 60}),
+        'bonus': ('B', {'width': 60}),
+        'bps': ('BPS', {'width': 60}),
+
+    }
+
+    player_grid = agstyler.draw_grid(
+        player,
+        formatter=player_formatter,
     )

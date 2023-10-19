@@ -44,7 +44,12 @@ def draw_grid(
         groupable=False,
         editable=False,
         wrapText=wrap_text,
-        autoHeight=auto_height
+        autoHeight=auto_height,
+    )
+
+    gb.configure_grid_options(
+        tooltipShowDelay=500,
+
     )
 
     if grid_options is not None:
@@ -62,10 +67,14 @@ def draw_grid(
         update_mode=GridUpdateMode.SELECTION_CHANGED | GridUpdateMode.VALUE_CHANGED,
         allow_unsafe_jscode=True,
         fit_columns_on_grid_load=fit_columns,
-        height=min(max_height, (1 + len(df.index)) * 29),
-        theme=theme,
+        height=max_height,
+        # =============================================================================
+        #         height=min(max_height, (1 + len(df.index)) * 29),
+        #         theme=theme,
+        # =============================================================================
         key=key,
-        custom_css=css
+        custom_css=css,
+        theme='alpine'
     )
 
 
