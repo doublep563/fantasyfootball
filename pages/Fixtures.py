@@ -63,7 +63,7 @@ render_image = JsCode("""
   return element;
     """)
 
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Fixtures", layout="wide")
 
 bootStrap = load_bootStrap(BASE_URL)
 teams = pd.json_normalize(bootStrap['teams'])

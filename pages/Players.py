@@ -19,7 +19,7 @@ class Color(Enum):
     GREEN_DARK = "#008631"
 
 
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Players", layout="wide")
 
 st.title('Fantasy Football Python Stuff')
 
