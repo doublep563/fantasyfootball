@@ -5,52 +5,42 @@ Created on Sun Oct 15 13:58:02 2023
 
 @author: ubuntu
 """
-import streamlit as st
-import requests
 import pandas as pd
+import requests
+import streamlit as st
 
+import apicall as api
 
 BASE_URL = 'https://fantasy.premierleague.com/api/'
+DOWNLOADS_DIRECTORY = 'downloads/'
+FOUR_HOURS = 60 * 60 * 4
 
 
-@st.cache_data
-def load_bootStrap(base_url):
-    data_load_state = st.text('Loading bootstrap data...')
-
-    bootStrap = requests.get(base_url + 'bootstrap-static').json()
-
-    data_load_state.text('Loading bootstrap data...done!')
-
-    return bootStrap
+def load_bootstrap():
+    return api.load('bootstrap-static', 'bootstrap.json')
 
 
-@st.cache_data
-def load_event_live(base_url, currentEvent):
-
-    data_load_state = st.text('Loading event live data...')
-
+def load_event_live(current_event):
     i = 1
-    allStats = []
+    all_stats = []
 
-    while i <= currentEvent:
-        print(i)
-        event = requests.get(base_url + 'event/' + str(i) + '/live/').json()
+    while i <= current_event:
+        url = "event/" + str(i) + "/live/"
+        file = "event-live-" + str(i) + ".json"
+        event = api.load(url, file)
         for element in event['elements']:
-            fixtureId = 0
-            id = element['id']
+            element_id = element['id']
             if len(element['explain']):
-                fixtureId = (element['explain'][0]['fixture'])
+                fixture_id = (element['explain'][0]['fixture'])
             else:
-                fixtureId = 999
+                fixture_id = 999
             stats = element['stats']
-            stats['id'] = id
-            stats['fixtureId'] = fixtureId
-            allStats.append(stats)
+            stats['id'] = element_id
+            stats['fixtureId'] = fixture_id
+            all_stats.append(stats)
         i += 1
 
-    data_load_state.text('Loading event live data...done!')
-
-    df = pd.DataFrame(allStats)
+    df = pd.DataFrame(all_stats)
 
     df['expected_goals'] = pd.to_numeric(df['expected_goals'])
     df['expected_assists'] = pd.to_numeric(df['expected_assists'])
@@ -62,15 +52,15 @@ def load_event_live(base_url, currentEvent):
     return df
 
 
-@st.cache_data
-def load_fixtures(BASE_URL):
+def load_fixtures():
+    fixtures = api.load('fixtures', 'fixtures.json')
     fixtures = requests.get(BASE_URL + 'fixtures').json()
 
     df = pd.DataFrame(fixtures)
-# =============================================================================
-#     df = df.drop(columns=['stats'])
-#
-# =============================================================================
+    # =============================================================================
+    #     df = df.drop(columns=['stats'])
+    #
+    # =============================================================================
     return df
 
 
@@ -80,14 +70,14 @@ def load_future_fixtures():
     return pd.DataFrame(fixtures)
 
 
-def build_players(bootStrap):
+def build_players(bootstrap):
     # create players dataframe
-    players = pd.json_normalize(bootStrap['elements'])
+    players = pd.json_normalize(bootstrap['elements'])
 
     # create teams dataframe
-    teams = pd.json_normalize(bootStrap['teams'])
+    teams = pd.json_normalize(bootstrap['teams'])
 
-    positions = pd.json_normalize(bootStrap['element_types'])
+    positions = pd.json_normalize(bootstrap['element_types'])
 
     # join players to teams
     df = pd.merge(

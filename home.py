@@ -1,10 +1,17 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import streamlit as st
+import sys
+from settings import ROOT_DIR
+
+sys.path.insert(1, '/home/ubuntu/streamlit/fantasyfootball/load')
+
 
 st.set_page_config(
     page_title="Home",
     page_icon="👋",
 )
-
+st.write("Project Home Directory " + ROOT_DIR)
 st.write("# Welcome to Streamlit! 👋")
 
 st.sidebar.success("Select a demo above.")

@@ -1,13 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import streamlit as st
 import altair as alt
 from enum import Enum
 from src import agstyler
 from src.agstyler import PRECISION_ONE
-from load_data import load_bootStrap
-from load_data import build_players
-from load_data import load_event_live
-from load_data import load_fixtures
-from load_data import BASE_URL
+from load.load_data import load_bootstrap, load_fixtures, load_event_live, build_players
 
 
 class Color(Enum):
@@ -25,30 +23,17 @@ st.title('Fantasy Football Python Stuff')
 
 # base url for all FPL API endpoints
 
-bootStrap = load_bootStrap(BASE_URL)
-events = load_event_live(BASE_URL, 8)
-fixtures = load_fixtures(BASE_URL)
+bootStrap = load_bootstrap()
+events = load_event_live(9)
+fixtures = load_fixtures()
 
 players = build_players(bootStrap)
 
 df = events.merge(fixtures, left_on='fixtureId', right_on='id')
 
 df = df.merge(players, left_on='id_x', right_on='player_id')
-# =============================================================================
-# st.write(list(df.columns))
-# st.write(df.head())
-# st.write(len(events.index))
-# st.write(len(fixtures.index))
-# st.write(len(df.index))
-# =============================================================================
 
 display = None
-
-# =============================================================================
-# players = players[['Name', 'Cost',
-#                    'Team', 'team_name', 'POS', 'Points', 'status', 'news', 'news_added']]
-#
-# =============================================================================
 
 player_types = st.sidebar.radio(
     "Position",
@@ -56,21 +41,19 @@ player_types = st.sidebar.radio(
     index=0,
     horizontal=True)
 
-min = (players['now_cost'].min())
-max = (players['now_cost'].max())
+min_cost = (players['now_cost'].min())
+max_cost = (players['now_cost'].max())
 
 if "slider_range" not in st.session_state:
-    st.session_state["slider_range"] = (min, max)
-
+    st.session_state["slider_range"] = (min_cost, max_cost)
 
 player_cost_range = st.sidebar.slider(
     'Player Cost',
-    min, max,  step=(0.1), format="%f", key="slider_range")
-
+    min_cost, max_cost, step=0.1, format="%f", key="slider_range")
 
 team_name = players['team_name'].drop_duplicates()
 team_choice = st.sidebar.selectbox('Team', team_name, index=None,
-                                   placeholder="Select Team...",)
+                                   placeholder="Select Team...", )
 
 player_select = st.sidebar.selectbox(
     "Search for Player",
@@ -86,26 +69,27 @@ else:
     if player_types == 'ALL':
         if team_choice:
             display = players.loc[(players['team_name'] == team_choice) & (
-                player_cost_range[0] <= players['now_cost']) & (players['now_cost'] <= player_cost_range[1])]
+                    player_cost_range[0] <= players['now_cost']) & (players['now_cost'] <= player_cost_range[1])]
 
         else:
             st.write(player_cost_range)
             display = players.loc[(
-                player_cost_range[0] <= players['now_cost']) & (players['now_cost'] <= player_cost_range[1])]
+                                          player_cost_range[0] <= players['now_cost']) & (
+                                          players['now_cost'] <= player_cost_range[1])]
     else:
         st.write(player_types)
         if team_choice:
             display = players.loc[(players['team_name'] == team_choice)
                                   & (players['singular_name_short'] == player_types) & (
-                                      player_cost_range[0] <= players['now_cost']) & (players['now_cost'] <= player_cost_range[1])]
+                                          player_cost_range[0] <= players['now_cost']) & (
+                                          players['now_cost'] <= player_cost_range[1])]
         else:
             display = players.loc[(
-                players['singular_name_short'] == player_types) & (
-                    player_cost_range[0] <= players['now_cost']) & (players['now_cost'] <= player_cost_range[1])]
-
+                                          players['singular_name_short'] == player_types) & (
+                                          player_cost_range[0] <= players['now_cost']) & (
+                                          players['now_cost'] <= player_cost_range[1])]
 
 with st.sidebar:
-
     formatter = {
         'web_name': ('Name', {'width': 110}),
         'team_name': ('Team', {'width': 60}),
@@ -129,8 +113,8 @@ with st.sidebar:
             {'background-color': f'{Color.RED_LIGHT.value} !important'},
         '.doubtful':
             {'background-color': f'{Color.YELLOW_LIGHT.value} !important'},
-            "#gridToolBar": {
-                "padding-bottom": "0px !important"}
+        "#gridToolBar": {
+            "padding-bottom": "0px !important"}
 
     }
 
@@ -144,36 +128,18 @@ with st.sidebar:
         fit_columns=True
     )
 
-# =============================================================================
-# outliers = df[['web_name', 'singular_name_short',
-#                'goals_scored', 'assists', 'expected_goal_involvements']]
-#
-# test = outliers.groupby(['web_name', 'singular_name_short']).sum()
-# test['xGI Differential'] = test['goals_scored'] + \
-#     test['assists'] - test['expected_goal_involvements']
-#
-# test = test.sort_values(
-#     by=['singular_name_short', 'xGI Differential'])
-#
-# st.dataframe(test)
-# =============================================================================
-
 selected_row = grid["selected_rows"]
 if selected_row:
     title = selected_row[0]['first_name'] + \
-        ' ' + selected_row[0]['second_name']
+            ' ' + selected_row[0]['second_name']
     st.title(title)
     st.header(selected_row[0]['team_name'])
 
     photo = selected_row[0]['photo'].split(".")
 
     photoUrl = 'https://resources.premierleague.com/premierleague/photos/players/110x140/p' + \
-        photo[0] + '.png'
+               photo[0] + '.png'
 
-# =============================================================================
-#     "https://resources.premierleague.com/premierleague/photos/players/110x140/p${this.code}.png"
-#
-# =============================================================================
     st.image(photoUrl)
 
     player = df.loc[df['player_id'] == selected_row[0]['player_id']]

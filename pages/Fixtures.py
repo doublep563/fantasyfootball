@@ -6,15 +6,11 @@ Created on Sun Oct 15 14:09:05 2023
 @author: ubuntu
 """
 
-import streamlit as st
-import pandas as pd
-import numpy as np
+from load.load_data import load_bootstrap, load_fixtures, load_future_fixtures
 import altair as alt
-from load_data import load_bootStrap
-from load_data import load_fixtures
-from load_data import load_future_fixtures
-from load_data import BASE_URL
-from st_aggrid.shared import JsCode
+import numpy as np
+import pandas as pd
+import streamlit as st
 
 
 def add_team_logo(row):
@@ -22,11 +18,9 @@ def add_team_logo(row):
         str(row['code']) + '.png'
 
 
-def get_first_event(df):
-    df = df.loc[df['event'] > 0]
-
-    min_event = df['event'].unique().min()
-    return min_event
+def get_first_event(da):
+    df_event = da.loc[da['event'] > 0]
+    return df_event['event'].unique().min()
 
 
 def sort_teams(df):
@@ -52,24 +46,65 @@ def sort_teams(df):
     return df_sorted.index.values.tolist()
 
 
-render_image = JsCode("""
-   const element = document.createElement('span');
-   const imageElement = document.createElement('img');
+def build_fixtures_chart(df):
 
-   imageElement.src = params.value
+    sort_order = sort_teams(df)
 
-  element.appendChild(imageElement);
-  element.appendChild(document.createTextNode(params.value));
-  return element;
-    """)
+    domain = [1, 2, 3, 4, 5]
+    range_ = ['#375523', '#01FC7A', '#E7E7E7', '#FF1715', '#80072D']
+
+    chart = (
+        alt.Chart(df, title="Fixture Difficulty Rating",
+                  height=1000, width=900)
+        .mark_rect(cornerRadius=5)
+        .encode(
+            x=alt.X("event",
+                    type="nominal",
+                    title="Game Week",
+                    axis=alt.Axis(labelAngle=0, orient="top",
+                                  titleFontSize=20, labelFontSize=14, labelFontWeight="bold"),
+                    ),
+            y=alt.Y("name",
+                    title="Team",
+                    sort=sort_order,
+                    axis=alt.Axis(titleFontSize=20, labelFontSize=14,
+                                  labelFontWeight="bold")
+                    ),
+
+            color=alt.Color("difficulty",
+                            type="nominal",
+                            title="",
+                            scale=alt.Scale(domain=domain, range=range_)),
+
+        )
+    ).properties(height=alt.Step(30))
+
+    text = chart.mark_text().encode(
+
+        detail='difficulty:N',
+        text=alt.Text('opponent_location:N'),
+        color=alt.condition(1 > alt.expr.datum['difficulty'] > 3,
+                            alt.value('white'),
+                            alt.value('black'))
+    )
+
+    # =============================================================================
+    # output = chart + text
+    # # =============================================================================
+    output = alt.layer(chart, text).configure_view(stroke='transparent').configure_scale(
+        bandPaddingInner=.05,
+    ).configure_title(fontSize=30, anchor='middle')
+
+    return output
+
 
 st.set_page_config(page_title="Fixtures", layout="wide")
 
-bootStrap = load_bootStrap(BASE_URL)
+bootStrap = load_bootstrap()
 teams = pd.json_normalize(bootStrap['teams'])
 teams['logo'] = teams.apply(add_team_logo, axis=1)
 
-fixtures = load_fixtures(BASE_URL)
+fixtures = load_fixtures()
 
 futureFixtures = load_future_fixtures()
 
@@ -92,7 +127,6 @@ while i <= 20:
         if y['team_a'] == i:
             away.append(y)
     i = i + 1
-
 
 df_home = pd.DataFrame(home)
 df_home['team'] = df_home['team_h']
@@ -119,8 +153,6 @@ df['opponent_location'] = df['opponent'] + ' (' + df['location'] + ')'
 
 min_event = get_first_event(df)
 
-st.write(min((min_event + 6), 38))
-
 radio_list = [*range(min_event, min((min_event + 6), 38), 1)]
 
 event = st.sidebar.radio(
@@ -132,53 +164,6 @@ event = st.sidebar.radio(
 df = df.loc[(df['event'] >= event)
             & (df['event'] < (event + 6))]
 
-sort_order = sort_teams(df)
-
-domain = [1, 2, 3, 4, 5]
-range_ = ['#375523', '#01FC7A', '#E7E7E7', '#FF1715', '#80072D']
-
-
-chart = (
-    alt.Chart(df, title="Fixture Difficulty Rating", height=1000, width=900)
-    .mark_rect(cornerRadius=5)
-    .encode(
-        x=alt.X("event",
-                type="nominal",
-                title="Game Week",
-                axis=alt.Axis(labelAngle=0, orient="top",
-                              titleFontSize=20, labelFontSize=14, labelFontWeight="bold"),
-                ),
-        y=alt.Y("name",
-                title="Team",
-                sort=sort_order,
-                axis=alt.Axis(titleFontSize=20, labelFontSize=14,
-                              labelFontWeight="bold")
-                ),
-
-        color=alt.Color("difficulty",
-                        type="nominal",
-                        title="",
-                        scale=alt.Scale(domain=domain, range=range_)),
-
-    )
-).properties(height=alt.Step(30))
-
-
-text = chart.mark_text().encode(
-
-    detail='difficulty:N',
-    text=alt.Text('opponent_location:N'),
-    color=alt.condition(1 > alt.expr.datum['difficulty'] > 3,
-                        alt.value('white'),
-                        alt.value('black'))
-)
-
-# =============================================================================
-# output = chart + text
-# # =============================================================================
-output = alt.layer(chart, text).configure_view(stroke='transparent').configure_scale(
-    bandPaddingInner=.05,
-).configure_title(fontSize=30, anchor='middle')
-
+output = build_fixtures_chart(df)
 
 st.altair_chart(output)
