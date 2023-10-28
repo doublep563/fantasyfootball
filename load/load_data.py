@@ -54,7 +54,7 @@ def load_event_live(current_event):
 
 def load_fixtures():
     fixtures = api.load('fixtures', 'fixtures.json')
-    fixtures = requests.get(BASE_URL + 'fixtures').json()
+    # fixtures = requests.get(BASE_URL + 'fixtures').json()
 
     df = pd.DataFrame(fixtures)
     # =============================================================================

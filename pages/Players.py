@@ -15,6 +15,8 @@ class Color(Enum):
     YELLOW_DARK = "#ffcc00"
     GREEN_LIGHT = "#abf7b1"
     GREEN_DARK = "#008631"
+    WHITE = "#ffffff"
+    BLACK = "#000000"
 
 
 st.set_page_config(page_title="Players", layout="wide")

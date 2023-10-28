@@ -37,7 +37,6 @@ def draw_grid(
         key=None,
         css: dict = None
 ):
-
     gb = GridOptionsBuilder()
     gb.configure_default_column(
         filterable=True,
@@ -53,7 +52,6 @@ def draw_grid(
     )
 
     if grid_options is not None:
-        print(grid_options)
         gb.configure_grid_options(**grid_options)
 
     for latin_name, (cyr_name, style_dict) in formatter.items():
