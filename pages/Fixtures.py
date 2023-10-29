@@ -108,7 +108,7 @@ futureFixtures = load_future_fixtures()
 fixtures['difficulty'] = 0
 fixtures['event'] = fixtures['event'].fillna(0)
 fixtures = fixtures.astype({"event": int})
-fixtures = fixtures[fixtures['finished'] is False]
+fixtures = fixtures[fixtures['finished'] == False]
 
 dicList = fixtures.to_dict(orient='records')
 

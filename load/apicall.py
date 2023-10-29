@@ -3,9 +3,7 @@ import os
 import json
 import time
 
-BASE_URL = 'https://fantasy.premierleague.com/api/'
-DOWNLOADS_DIRECTORY = "/home/ubuntu/streamlit/fantasyfootball/downloads/"
-FOUR_HOURS = 60 * 60 * 4
+from settings import DOWNLOADS_DIRECTORY, FOUR_HOURS, BASE_URL
 
 
 def load(url, file):
@@ -37,4 +35,3 @@ def load(url, file):
             return rp
         else:
             print("Error from server: " + str(response.content))
-

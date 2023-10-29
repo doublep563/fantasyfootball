@@ -9,11 +9,7 @@ import pandas as pd
 import requests
 
 import apicall as api
-
-BASE_URL = 'https://fantasy.premierleague.com/api/'
-DOWNLOADS_DIRECTORY = 'downloads/'
-FOUR_HOURS = 60 * 60 * 4
-FPL_ID = 26431
+from settings import FPL_ID, BASE_URL
 
 
 def load_bootstrap():
