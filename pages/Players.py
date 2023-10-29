@@ -25,13 +25,13 @@ st.title('Fantasy Football Python Stuff')
 
 # base url for all FPL API endpoints
 
-bootStrap = load_bootstrap()
-events = load_event_live(9)
-fixtures = load_fixtures()
+events, game_settings, phases, teams, total_players, elements, element_stats, element_types = load_bootstrap()
+live_events = load_event_live(10)
+fixtures, stats = load_fixtures()
 
-players = build_players(bootStrap)
+players = build_players(elements, teams, element_types)
 
-df = events.merge(fixtures, left_on='fixtureId', right_on='id')
+df = live_events.merge(fixtures, left_on='fixtureId', right_on='id')
 
 df = df.merge(players, left_on='id_x', right_on='player_id')
 

@@ -1,5 +1,4 @@
 import altair as alt
-import pandas as pd
 import streamlit as st
 
 from load.load_data import load_bootstrap, build_players
@@ -57,16 +56,15 @@ def build_teams_chart(df):
 
 st.set_page_config(page_title="Teams", layout="wide")
 
-bootStrap = load_bootstrap()
-teams = pd.json_normalize(bootStrap['teams'])
-elements = pd.json_normalize(bootStrap['elements'])
-fixtures = load_fixtures()
+events, game_settings, phases, teams, total_players, elements, element_stats, element_types = load_bootstrap()
 
-events = load_event_live(9)
-players = build_players(bootStrap)
+fixtures, stats = load_fixtures()
+
+events_live = load_event_live(9)
+players = build_players(elements, teams, element_types)
 
 display = None
-df = events.merge(fixtures, left_on='fixtureId', right_on='id')
+df = events_live.merge(fixtures, left_on='fixtureId', right_on='id')
 
 df = df.merge(players, left_on='id_x', right_on='player_id')
 
@@ -128,7 +126,6 @@ with col4:
                         title="Position",
                         ),
     ))
-
 
 col5, col6 = st.columns(2)
 

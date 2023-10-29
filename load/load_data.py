@@ -7,17 +7,50 @@ Created on Sun Oct 15 13:58:02 2023
 """
 import pandas as pd
 import requests
-import streamlit as st
 
 import apicall as api
 
 BASE_URL = 'https://fantasy.premierleague.com/api/'
 DOWNLOADS_DIRECTORY = 'downloads/'
 FOUR_HOURS = 60 * 60 * 4
+FPL_ID = 26431
 
 
 def load_bootstrap():
-    return api.load('bootstrap-static', 'bootstrap.json')
+    response = api.load('bootstrap-static', 'bootstrap.json')
+
+    events = pd.json_normalize(response['events'])
+    game_settings = pd.json_normalize(response['game_settings'])
+    phases = pd.json_normalize(response['phases'])
+    teams = pd.json_normalize(response['teams'])
+    total_players = response['total_players']
+    elements = pd.json_normalize(response['elements'])
+    element_stats = pd.json_normalize(response['element_stats'])
+    element_types = pd.json_normalize(response['element_types'])
+
+    return events, game_settings, phases, teams, total_players, elements, element_stats, element_types
+
+
+def load_entry():
+    response = api.load("entry/" + str(FPL_ID), 'entry.json')
+    entry = pd.json_normalize(response, max_level=0)
+    entry = entry.drop(columns="leagues")
+
+    classic = pd.json_normalize(response['leagues']['classic'])
+    h2h = pd.json_normalize(response['leagues']['h2h'])
+    cup = pd.json_normalize(response['leagues']['cup'])
+    cup_matches = pd.json_normalize(response['leagues']['cup_matches'])
+    return response, entry, classic, h2h, cup, cup_matches
+
+
+def load_league_standings(league_id):
+    url = "leagues-classic/" + str(league_id) + "/standings"
+    return api.load(url, "league_" + str(league_id) + ".json")
+
+
+def load_picks(entry, event):
+    url = "entry/" + str(entry) + "/event/" + str(event) + "/picks/"
+    return api.load(url, str(entry) + "-" + str(event) + ".json")
 
 
 def load_event_live(current_event):
@@ -53,15 +86,13 @@ def load_event_live(current_event):
 
 
 def load_fixtures():
-    fixtures = api.load('fixtures', 'fixtures.json')
-    # fixtures = requests.get(BASE_URL + 'fixtures').json()
+    response = api.load('fixtures', 'fixtures.json')
+    fixtures = pd.json_normalize(response, max_level=0)
+    # stats not decoded. Useless as is.
+    stats = fixtures['stats']
 
-    df = pd.DataFrame(fixtures)
-    # =============================================================================
-    #     df = df.drop(columns=['stats'])
-    #
-    # =============================================================================
-    return df
+    fixtures = fixtures.drop(columns='stats')
+    return fixtures, stats
 
 
 def load_future_fixtures():
@@ -70,18 +101,10 @@ def load_future_fixtures():
     return pd.DataFrame(fixtures)
 
 
-def build_players(bootstrap):
-    # create players dataframe
-    players = pd.json_normalize(bootstrap['elements'])
-
-    # create teams dataframe
-    teams = pd.json_normalize(bootstrap['teams'])
-
-    positions = pd.json_normalize(bootstrap['element_types'])
-
+def build_players(elements, teams, element_types):
     # join players to teams
     df = pd.merge(
-        left=players,
+        left=elements,
         right=teams,
         left_on='team',
         right_on='id'
@@ -89,7 +112,7 @@ def build_players(bootstrap):
 
     # join player positions
     df = df.merge(
-        positions,
+        element_types,
         left_on='element_type',
         right_on='id'
     )

@@ -47,7 +47,6 @@ def sort_teams(df):
 
 
 def build_fixtures_chart(df):
-
     sort_order = sort_teams(df)
 
     domain = [1, 2, 3, 4, 5]
@@ -100,18 +99,16 @@ def build_fixtures_chart(df):
 
 st.set_page_config(page_title="Fixtures", layout="wide")
 
-bootStrap = load_bootstrap()
-teams = pd.json_normalize(bootStrap['teams'])
+events, game_settings, phases, teams, total_players, elements, element_stats, element_types = load_bootstrap()
 teams['logo'] = teams.apply(add_team_logo, axis=1)
 
-fixtures = load_fixtures()
-
+fixtures, stats = load_fixtures()
 futureFixtures = load_future_fixtures()
 
 fixtures['difficulty'] = 0
 fixtures['event'] = fixtures['event'].fillna(0)
 fixtures = fixtures.astype({"event": int})
-fixtures = fixtures[fixtures['finished'] == False]
+fixtures = fixtures[fixtures['finished'] is False]
 
 dicList = fixtures.to_dict(orient='records')
 
